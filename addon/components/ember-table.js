@@ -237,8 +237,8 @@ StyleBindingsMixin, ResizeHandlerMixin, {
     if ((this.get('_state') || this.get('state')) !== 'inDOM') {
       return;
     }
-    this.set('_width', this.$().parent().outerWidth());
-    this.set('_height', this.$().parent().outerHeight());
+    this.set('_width', this.$().parent().width());
+    this.set('_height', this.$().parent().height());
     // we need to wait for the table to be fully rendered before antiscroll can
     // be used
     return Ember.run.next(this, this.updateLayout);
@@ -249,7 +249,7 @@ StyleBindingsMixin, ResizeHandlerMixin, {
       return false;
     }
     var oldTableWidth = this.get('_width');
-    var newTableWidth = this.$().parent().outerWidth();
+    var newTableWidth = this.$().parent().width();
     // TODO(azirbel): This should be 'columns', I believe. Fix separately.
     var totalColumnWidth = this._getTotalWidth(this.get('tableColumns'));
     return (oldTableWidth > totalColumnWidth) && (newTableWidth < totalColumnWidth);
