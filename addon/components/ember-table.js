@@ -17,6 +17,13 @@ StyleBindingsMixin, ResizeHandlerMixin, {
   // `Ember.StyleBindingsMixin` documentation for more details.
   styleBindings: ['height'],
 
+  // Attributes on the element which are bound the component values
+  attributeBindings: ['tabIndex'],
+
+  // Setting tab index to -1 removes the element from being tab to. This is
+  // required to allow keyboard navigation.
+  tabIndex: -1,
+
   // An array of row objects. Usually a hash where the keys are column names
   // and the values are the rows's values. However, could be any object, since
   // each column can define a function to return the column value given the row
@@ -428,6 +435,11 @@ StyleBindingsMixin, ResizeHandlerMixin, {
   }).property('bodyContent.length', '_numItemsShowing', 'rowHeight',
       '_tableScrollTop'),
 
+  _endIndex: Ember.computed(function() {
+    return this.get('_startIndex') + this.get('_numItemsShowing');
+  }).property('_startIndex', '_numItemsShowing'),
+
+
   _getTotalWidth: function(columns, columnWidthPath) {
     if (columnWidthPath == null) {
       columnWidthPath = 'width';
@@ -493,6 +505,7 @@ StyleBindingsMixin, ResizeHandlerMixin, {
       case 'single':
         this.get('persistedSelection').clear();
         this.get('persistedSelection').addObject(item);
+        this.set('lastSelected', row);
         break;
       case 'multiple':
         if (event.shiftKey) {
@@ -528,6 +541,107 @@ StyleBindingsMixin, ResizeHandlerMixin, {
         }
         break;
     }
+  },
+
+  keyDown: function (e) {
+    if (e.keyCode === 38) {
+      // arrow up
+      e.preventDefault();
+      this.selectWithArrow('up', e.shiftKey);
+    } else if (e.keyCode === 40) {
+      // arrow down
+      e.preventDefault();
+      this.selectWithArrow('down', e.shiftKey);
+    } else if (e.keyCode === 65) {
+      // 65 is a
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        this.selectAll();
+      }
+    }
+  },
+
+  selectWithArrow: function (direction, aggregate) {
+    switch(this.get('selectionMode')) {
+      case 'none':
+        break;
+      case 'single':
+        this.selectWithArrowSingle(direction);
+        break;
+      case 'multiple':
+        this.selectWithArrowMultiple(direction, aggregate);
+        break;
+    }
+  },
+
+  selectWithArrowSingle: function(direction) {
+    var rowIndex = this.rowIndex(this.get('lastSelected'));
+    var firstRowIndex = 0;
+    var lastRowIndex = this.get('bodyContent.length') - 1;
+    var futureRowIndex;
+
+    // Calculate new index, defaulting to current index for edge cases
+    if (direction === 'up' && rowIndex !== firstRowIndex) {
+      futureRowIndex = rowIndex - 1;
+    } else if (direction === 'down' && rowIndex !== lastRowIndex) {
+      futureRowIndex = rowIndex + 1;
+    } else {
+      // We are at the end and trying to go down or
+      // at the start and trying to go up so dont do anything.
+      return;
+    }
+
+    // recalculate scroll position
+    var atBegining = futureRowIndex === this.get('_startIndex');
+    var atEnd = futureRowIndex === this.get('_endIndex');
+
+    var rowHeight = this.get('rowHeight');
+    var rowsToScroll = 1;
+    var amountToScroll = this.get('rowHeight') * rowsToScroll;
+    var scrollPosition;
+
+    if (direction === 'down' && atEnd) {
+      scrollPosition =  this.get('_tableScrollTop') + amountToScroll;
+      this._scrollToVerticalPosition(scrollPosition);
+    }
+
+    if (direction === 'up' && atBegining) {
+      scrollPosition =  this.get('_tableScrollTop') - amountToScroll;
+      this._scrollToVerticalPosition(scrollPosition);
+    }
+
+    // Clear current selection
+    this.get('persistedSelection').clear();
+
+    // Get new row and persist it. Set lastSelected for book-keeping
+    var futureSelection = this.get('bodyContent').mapBy('content').objectAt(futureRowIndex);
+    this.get('persistedSelection').addObject(futureSelection);
+    this.set('lastSelected', this.get('bodyContent').objectAt(futureRowIndex));
+  },
+
+  selectWithArrowMultiple: function(direction, aggregate) {
+    // TODO
+  },
+
+  selectAll: function() {
+    if (this.get('selectionMode') !== 'multiple') {
+      return;
+    }
+
+    // Clear current selection
+    this.get('persistedSelection').clear();
+    this.get('rangeSelection').clear();
+    this.set('lastSelected', null);
+
+    // Set new selection
+    var rangeSelection = this.get('bodyContent').mapBy('content');
+    this.get('rangeSelection').addObjects(rangeSelection);
+    this.set('lastSelected', this.get('bodyContent.lastObject.content'));
+  },
+
+  //Super hacky, refactor
+  _scrollToVerticalPosition: function(y) {
+    this.$('.ember-table-body-container .antiscroll-inner').scrollTop(y);
   },
 
   findRow: function(content) {
