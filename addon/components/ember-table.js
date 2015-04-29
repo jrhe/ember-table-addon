@@ -2,7 +2,7 @@ import Ember from 'ember';
 import StyleBindingsMixin from 'ember-table/mixins/style-bindings';
 import ResizeHandlerMixin from 'ember-table/mixins/resize-handler';
 import RowArrayController from 'ember-table/controllers/row-array';
-import TableRow from 'ember-table/controllers/row';
+import Row from 'ember-table/controllers/row';
 
 export default Ember.Component.extend(
 StyleBindingsMixin, ResizeHandlerMixin, {
@@ -157,7 +157,7 @@ StyleBindingsMixin, ResizeHandlerMixin, {
       target: this,
       parentController: this,
       container: this.get('container'),
-      itemController: TableRow,
+      itemController: Row,
       content: this.get('content')
     });
   }).property('content.[]'),
@@ -293,15 +293,16 @@ StyleBindingsMixin, ResizeHandlerMixin, {
         if (newWidth < column.get('minWidth')) {
           doNextLoop = true;
           column.set('width', column.get('minWidth'));
-          return availableWidth -= column.get('width');
+          availableWidth -= column.get('width');
         } else if (newWidth > column.get('maxWidth')) {
           doNextLoop = true;
           column.set('width', column.get('maxWidth'));
-          return availableWidth -= column.get('width');
+          availableWidth -= column.get('width');
         } else {
           column.set('width', newWidth);
-          return nextColumnsToResize.pushObject(column);
+          nextColumnsToResize.pushObject(column);
         }
+        columnsToResize = nextColumnsToResize;
       });
     }
   },

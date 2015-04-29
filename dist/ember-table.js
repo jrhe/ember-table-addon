@@ -123,7 +123,7 @@ var define, requireModule, require, requirejs;
     var StyleBindingsMixin = __dependency2__["default"];
     var ResizeHandlerMixin = __dependency3__["default"];
     var RowArrayController = __dependency4__["default"];
-    var TableRow = __dependency5__["default"];
+    var Row = __dependency5__["default"];
 
     __exports__["default"] = Ember.Component.extend(
     StyleBindingsMixin, ResizeHandlerMixin, {
@@ -278,7 +278,7 @@ var define, requireModule, require, requirejs;
           target: this,
           parentController: this,
           container: this.get('container'),
-          itemController: TableRow,
+          itemController: Row,
           content: this.get('content')
         });
       }).property('content.[]'),
@@ -414,15 +414,16 @@ var define, requireModule, require, requirejs;
             if (newWidth < column.get('minWidth')) {
               doNextLoop = true;
               column.set('width', column.get('minWidth'));
-              return availableWidth -= column.get('width');
+              availableWidth -= column.get('width');
             } else if (newWidth > column.get('maxWidth')) {
               doNextLoop = true;
               column.set('width', column.get('maxWidth'));
-              return availableWidth -= column.get('width');
+              availableWidth -= column.get('width');
             } else {
               column.set('width', newWidth);
-              return nextColumnsToResize.pushObject(column);
+              nextColumnsToResize.pushObject(column);
             }
+            columnsToResize = nextColumnsToResize;
           });
         }
       },
