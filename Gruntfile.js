@@ -16,7 +16,7 @@ module.exports = function (grunt) {
     pkg: grunt.file.readJSON('package.json'),
     banner: '/*!\n* <%=pkg.name %> v<%=pkg.version%>\n' +
             '* Copyright 2012-<%=grunt.template.today("yyyy")%> Addepar Inc.\n' +
-            '* See LICENSE.\n*/',
+            '* See LICENSE.md.\n*/',
 
     broccoli: {
       dist: {

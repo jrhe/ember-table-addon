@@ -1,7 +1,7 @@
 /*!
 * ember-table v0.4.1
 * Copyright 2012-2015 Addepar Inc.
-* See LICENSE.
+* See LICENSE.md.
 */
 (function(){;
 var define, requireModule, require, requirejs;
