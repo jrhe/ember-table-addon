@@ -2,7 +2,7 @@
   <span {{bind-attr class=":ember-table-toggle-span :ember-table-toggle
       isCollapsed:ember-table-expand:ember-table-collapse"}}
       {{action 'toggleTableCollapse'}}>
-    <i class="icon-caret-down ember-table-toggle-icon"></i>
+    {{fa-icon "caret-down" classNames="ember-table-toggle-icon"}}
   </span>
   <div class="ember-table-header-content-container">
     <span class="ember-table-content">
