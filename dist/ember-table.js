@@ -1853,7 +1853,7 @@ var define, requireModule, require, requirejs;
         if (!itemViewClass || !newNumViews) {
           return;
         }
-        var oldNumViews = this.get('childViews.length');
+        var oldNumViews = this.get('length');
         var numViewsToInsert = newNumViews - oldNumViews;
         // if newNumViews < oldNumViews we need to remove some views
         if (numViewsToInsert < 0) {
@@ -1872,9 +1872,9 @@ var define, requireModule, require, requirejs;
       // into the LazyItemMixin
       viewportDidChange: Ember.observer(function() {
         var childViews = this.get('childViews');
-        var content = this.getWithDefault('content', []);
+        var content = this.get('content') || [];
         var clength = content.get('length');
-        var numShownViews = Math.min(childViews.get('length'), clength);
+        var numShownViews = Math.min(this.get('length'), clength);
         var startIndex = this.get('startIndex');
         // this is a necessary check otherwise we are trying to access an object
         // that doesn't exist
@@ -1901,7 +1901,7 @@ var define, requireModule, require, requirejs;
             childView.prepareContent();
           }
         });
-      }, 'content.length', 'startIndex')
+      }, 'content.length', 'length', 'startIndex')
     });
   });
 ;define("ember-table/views/lazy-item", 
