@@ -745,11 +745,13 @@ var define, requireModule, require, requirejs;
     });
   });
 ;define("ember-table/mixins/resize-handler", 
-  ["ember","exports"],
-  function(__dependency1__, __exports__) {
+  ["ember","ember-table/mixins/element-resize-listener","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
     "use strict";
     // TODO(azirbel): This needs to be an external dependency.
     var Ember = __dependency1__["default"];
+    var addElementResizeListener = __dependency2__.addElementResizeListener;
+    var removeElementResizeListener = __dependency2__.removeElementResizeListener;
 
     __exports__["default"] = Ember.Mixin.create({
       resizeEndDelay: 200,
@@ -782,17 +784,17 @@ var define, requireModule, require, requirejs;
         if (typeof this.onResize === "function") {
           this.onResize(event);
         }
-        return Ember.run.debounce(this, this.get('endResize'), event, this.get('resizeEndDelay'));
+        Ember.run.debounce(this, this.get('endResize'), event, this.get('resizeEndDelay'));
       },
 
       didInsertElement: function() {
         this._super();
-        return this._setupDocumentHandlers();
+        this._setupDocumentHandlers();
       },
 
       willDestroyElement: function() {
         this._removeDocumentHandlers();
-        return this._super();
+        this._super();
       },
 
       _setupDocumentHandlers: function() {
@@ -800,14 +802,86 @@ var define, requireModule, require, requirejs;
           return;
         }
         this._resizeHandler = Ember.$.proxy(this.get('handleWindowResize'), this);
-        return Ember.$(window).on("resize." + this.elementId, this._resizeHandler);
+        Ember.$(window).on("resize." + this.elementId, this._resizeHandler);
+        addElementResizeListener(this.$()[0], Ember.run.bind(this, this.elementSizeDidChange));
       },
 
       _removeDocumentHandlers: function() {
         Ember.$(window).off("resize." + this.elementId, this._resizeHandler);
-        return this._resizeHandler = null;
+        removeElementResizeListener(this.$()[0], Ember.run.bind(this, this.elementSizeDidChange));
+        this._resizeHandler = null;
       }
     });
+  });
+;define("ember-table/mixins/element-resize-listener", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var attachEvent = document.attachEvent;
+    var isIE = navigator.userAgent.match(/Trident/);
+    console.log(isIE);
+    var requestFrame = (function(){
+      var raf = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame ||
+          function(fn){ return window.setTimeout(fn, 20); };
+      return function(fn){ return raf(fn); };
+    })();
+
+    var cancelFrame = (function(){
+      var cancel = window.cancelAnimationFrame || window.mozCancelAnimationFrame || window.webkitCancelAnimationFrame ||
+             window.clearTimeout;
+      return function(id){ return cancel(id); };
+    })();
+
+    function resizeListener(e){
+      var win = e.target || e.srcElement;
+      if (win.__resizeRAF__) cancelFrame(win.__resizeRAF__);
+      win.__resizeRAF__ = requestFrame(function(){
+        var trigger = win.__resizeTrigger__;
+        trigger.__resizeListeners__.forEach(function(fn){
+          fn.call(trigger, e);
+        });
+      });
+    }
+
+    function objectLoad(e){
+      this.contentDocument.defaultView.__resizeTrigger__ = this.__resizeElement__;
+      this.contentDocument.defaultView.addEventListener('resize', resizeListener);
+    }
+
+    function addElementResizeListener(element, fn){
+      if (!element.__resizeListeners__) {
+        element.__resizeListeners__ = [];
+        if (attachEvent) {
+          element.__resizeTrigger__ = element;
+          element.attachEvent('onresize', resizeListener);
+        }
+        else {
+          if (getComputedStyle(element).position == 'static') element.style.position = 'relative';
+          var obj = element.__resizeTrigger__ = document.createElement('object'); 
+          obj.setAttribute('style', 'display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; pointer-events: none; z-index: -1;');
+          obj.__resizeElement__ = element;
+          obj.onload = objectLoad;
+          obj.type = 'text/html';
+          if (isIE) element.appendChild(obj);
+          obj.data = 'about:blank';
+          if (!isIE) element.appendChild(obj);
+        }
+      }
+      element.__resizeListeners__.push(fn);
+    };
+    __exports__.addElementResizeListener = addElementResizeListener;
+
+    function removeElementResizeListener(element, fn){
+      element.__resizeListeners__.splice(element.__resizeListeners__.indexOf(fn), 1);
+      if (!element.__resizeListeners__.length) {
+        if (attachEvent) element.detachEvent('onresize', resizeListener);
+        else {
+          element.__resizeTrigger__.contentDocument.defaultView.removeEventListener('resize', resizeListener);
+          element.__resizeTrigger__ = !element.removeChild(element.__resizeTrigger__);
+        }
+      }
+    };
+    __exports__.removeElementResizeListener = removeElementResizeListener;
   });
 ;define("ember-table/controllers/row-array", 
   ["ember","exports"],
@@ -1103,7 +1177,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1, escapeExpression=this.escapeExpression, self=this;
@@ -1149,7 +1224,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1, escapeExpression=this.escapeExpression, self=this;
@@ -1193,7 +1269,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1, escapeExpression=this.escapeExpression, self=this;
@@ -1235,7 +1312,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1, escapeExpression=this.escapeExpression;
@@ -1256,7 +1334,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', escapeExpression=this.escapeExpression;
@@ -1277,7 +1356,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1, escapeExpression=this.escapeExpression, self=this;
@@ -1317,7 +1397,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', escapeExpression=this.escapeExpression;
@@ -1335,7 +1416,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', stack1;
@@ -1354,7 +1436,8 @@ var define, requireModule, require, requirejs;
   function(__dependency1__, __exports__) {
     "use strict";
     var Ember = __dependency1__["default"];
-    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data) {
+    __exports__["default"] = Ember.Handlebars.template(function anonymous(Handlebars,depth0,helpers,partials,data
+    /**/) {
     this.compilerInfo = [4,'>= 1.0.0'];
     helpers = this.merge(helpers, Ember.Handlebars.helpers); data = data || {};
       var buffer = '', escapeExpression=this.escapeExpression;
