@@ -1,63 +1,109 @@
-var attachEvent = document.attachEvent;
+// Notes
+// __resizeListeners__ Holds the resize listeners registered to the element
+// __resizeTrigger__ Holds a reference the element which triggered the resize event to persist it between objectLoad and resizeListener
+// __resizeRAF__ Holds reference to the animation frame callback used to limit the numebr of times the resize listeners are called
+
 var isIE = navigator.userAgent.match(/Trident/);
-console.log(isIE);
-var requestFrame = (function(){
-  var raf = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame ||
-      function(fn){ return window.setTimeout(fn, 20); };
-  return function(fn){ return raf(fn); };
-})();
 
-var cancelFrame = (function(){
-  var cancel = window.cancelAnimationFrame || window.mozCancelAnimationFrame || window.webkitCancelAnimationFrame ||
-         window.clearTimeout;
-  return function(id){ return cancel(id); };
-})();
+var requestAnimationFrameFallback = function(fn) {
+  return window.setTimeout(fn, 20);
+};
 
-function resizeListener(e){
+var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                            window.webkitRequestAnimationFrame || requestAnimationFrameFallback;
+var cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame ||
+                          window.webkitCancelAnimationFrame || window.clearTimeout;
+
+function resizeListener(e) {
   var win = e.target || e.srcElement;
-  if (win.__resizeRAF__) cancelFrame(win.__resizeRAF__);
-  win.__resizeRAF__ = requestFrame(function(){
+
+  // Cancel the animation frame callback if it already exists
+  if (win.__resizeRAF__) {
+    cancelAnimationFrame(win.__resizeRAF__);
+  }
+
+  // Setup the animation frame callback
+  win.__resizeRAF__ = requestAnimationFrame(function() {
     var trigger = win.__resizeTrigger__;
-    trigger.__resizeListeners__.forEach(function(fn){
+    trigger.__resizeListeners__.forEach(function(fn) {
       fn.call(trigger, e);
     });
   });
 }
 
-function objectLoad(e){
-  this.contentDocument.defaultView.__resizeTrigger__ = this.__resizeElement__;
-  this.contentDocument.defaultView.addEventListener('resize', resizeListener);
+function objectLoad(/*e*/) {
+  var defaultView = this.contentDocument.defaultView;
+  defaultView.__resizeTrigger__ = this.__resizeElement__;
+  defaultView.addEventListener('resize', resizeListener);
 }
 
-export function addElementResizeListener(element, fn){
-  if (!element.__resizeListeners__) {
-    element.__resizeListeners__ = [];
-    if (attachEvent) {
-      element.__resizeTrigger__ = element;
-      element.attachEvent('onresize', resizeListener);
-    }
-    else {
-      if (getComputedStyle(element).position == 'static') element.style.position = 'relative';
-      var obj = element.__resizeTrigger__ = document.createElement('object'); 
-      obj.setAttribute('style', 'display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; pointer-events: none; z-index: -1;');
-      obj.__resizeElement__ = element;
-      obj.onload = objectLoad;
-      obj.type = 'text/html';
-      if (isIE) element.appendChild(obj);
-      obj.data = 'about:blank';
-      if (!isIE) element.appendChild(obj);
-    }
-  }
-  element.__resizeListeners__.push(fn);
-};
 
-export function removeElementResizeListener(element, fn){
-  element.__resizeListeners__.splice(element.__resizeListeners__.indexOf(fn), 1);
-  if (!element.__resizeListeners__.length) {
-    if (attachEvent) element.detachEvent('onresize', resizeListener);
-    else {
-      element.__resizeTrigger__.contentDocument.defaultView.removeEventListener('resize', resizeListener);
-      element.__resizeTrigger__ = !element.removeChild(element.__resizeTrigger__);
+function setup(el) {
+  // initialize listener array
+  el.__resizeListeners__ = [];
+
+  // For IE5-8
+  if (document.attachEvent) {
+    el.__resizeTrigger__ = el;
+    el.attachEvent('onresize', resizeListener);
+
+  // All other browsers
+  } else {
+    // Force relative positioning of the element
+    if (getComputedStyle(el).position === 'static') {
+      el.style.position = 'relative';
+    }
+    // Create the hidden element and insert it into the dom
+    var obj = el.__resizeTrigger__ = document.createElement('object');
+    obj.setAttribute('style',
+                     'display: block; position: absolute; top: 0; left: 0; height: 100%; ' +
+                     'width: 100%; overflow: hidden; pointer-events: none; z-index: -1;');
+    obj.__resizeElement__ = el;
+    obj.onload = objectLoad;
+    obj.type = 'text/html';
+    if (isIE) {
+      el.appendChild(obj);
+    }
+    obj.data = 'about:blank';
+    if (!isIE) {
+      el.appendChild(obj);
     }
   }
-};
+}
+
+function teardown() {
+  // For IE5-8
+  if (document.attachEvent) {
+    el.detachEvent('onresize', resizeListener);
+  // All other browsers
+  } else {
+    el.__resizeTrigger__.contentDocument.defaultView.removeEventListener('resize', resizeListener);
+    el.__resizeTrigger__ = !el.removeChild(el.__resizeTrigger__);
+  }
+}
+
+function registerListener(el, fn) {
+  el.__resizeListeners__.push(fn);
+}
+
+function unregisterListener(el, fn) {
+  var fnIdx = el.__resizeListeners__.indexOf(fn);
+  el.__resizeListeners__.splice(fnIdx, 1);
+}
+
+
+function addElementResizeListener(el, fn) {
+  if (!el.__resizeListeners__) {
+    setup(el);
+  }
+  registerListener(el, fn);
+}
+
+function removeElementResizeListener(el, fn) {
+  unregisterListener(el, fn);
+  if (el.__resizeListeners__.length) {
+    teardown(el);
+  }
+}
+
+export { addElementResizeListener, removeElementResizeListener };
